@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="960" height="540">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fd0f7"/>
+      <stop offset="1" stop-color="#d4eefc"/>
+    </linearGradient>
+  </defs>
+  <!-- sky and ground -->
+  <rect width="960" height="540" fill="url(#sky)"/>
+  <rect y="340" width="960" height="200" fill="#e8b45c"/>
+  <line x1="0" y1="340" x2="960" y2="340" stroke="#b98a3e" stroke-width="2"/>
+  <g stroke="#b98a3e" stroke-width="2" fill="none" stroke-linecap="round">
+    <path d="M60 420 q60 -4 120 0"/><path d="M720 400 q60 -4 110 0"/>
+    <path d="M820 500 q30 -4 60 0"/><path d="M120 490 l14 -14 m-6 14 l4 -16"/>
+  </g>
+  <!-- distant tree -->
+  <g>
+    <path d="M190 340 q4 -50 -6 -70 M190 340 q-2 -30 14 -55" stroke="#7a6a3a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M110 275 q40 -40 80 -30 q40 -16 90 24 q-50 -2 -90 6 q-44 -6 -80 0 z" fill="#8c9a4f"/>
+  </g>
+  <!-- distant castle -->
+  <g fill="#9aa3ad" stroke="#6f7881" stroke-width="2">
+    <rect x="760" y="270" width="100" height="70"/>
+    <rect x="750" y="250" width="22" height="90"/><rect x="848" y="250" width="22" height="90"/>
+    <path d="M750 250 l11 -18 l11 18 z M848 250 l11 -18 l11 18 z" fill="#a3322b"/>
+    <rect x="800" y="300" width="20" height="40" fill="#4a3a2a"/>
+  </g>
+
+  <!-- ground shadow -->
+  <ellipse cx="470" cy="478" rx="130" ry="16" fill="#b9873a" opacity=".75"/>
+
+  <!-- spear -->
+  <line x1="640" y1="92" x2="640" y2="486" stroke="#6b4423" stroke-width="7" stroke-linecap="round"/>
+  <path d="M640 40 l-13 54 h26 z" fill="#c4c9d1" stroke="#222" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="640" y1="94" x2="640" y2="102" stroke="#a3322b" stroke-width="10"/>
+
+  <g stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- legs (thin lines) -->
+    <path d="M440 400 L428 478 L410 480"/>
+    <path d="M500 400 L512 478 L530 480"/>
+
+    <!-- arms: back arm resting, front arm gripping spear -->
+    <path d="M410 275 Q380 320 395 360"/>
+    <path d="M530 270 Q585 285 640 320"/>
+
+    <!-- very thick body in tunic -->
+    <path d="M410 258 Q470 236 535 258 Q560 330 548 408 Q470 430 392 408 Q380 330 410 258 Z" fill="#b8352a"/>
+    <!-- tunic hem zig-zag -->
+    <path d="M392 408 l14 22 l16 -18 l16 22 l16 -18 l16 22 l16 -18 l16 22 l16 -18 l16 22 l10 -16 L548 408 Q470 430 392 408 Z" fill="#8f2a20"/>
+    <!-- belt + buckle -->
+    <path d="M396 345 Q470 362 546 345 L548 366 Q470 384 394 366 Z" fill="#3b2412"/>
+    <rect x="456" y="353" width="28" height="22" rx="3" fill="#d4a017" stroke-width="3"/>
+    <!-- neckline lacing -->
+    <path d="M470 252 L470 300 M458 266 L482 276 M458 282 L482 292" stroke="#f0d9a0" stroke-width="3"/>
+
+    <!-- hand on spear -->
+    <circle cx="640" cy="320" r="9" fill="#fff"/>
+    <circle cx="396" cy="364" r="9" fill="#fff"/>
+
+    <!-- head -->
+    <circle cx="470" cy="170" r="72" fill="#fff"/>
+    <!-- golden hair: tuft on top and long locks on the sides -->
+    <path d="M404 150 Q400 90 470 92 Q540 90 536 150 Q528 126 498 120 Q470 136 442 120 Q412 126 404 150 Z" fill="#e8b923" stroke-width="4"/>
+    <path d="M404 150 Q388 200 404 238 Q416 196 420 150" fill="#e8b923" stroke-width="4"/>
+    <path d="M536 150 Q552 200 536 238 Q524 196 520 150" fill="#e8b923" stroke-width="4"/>
+    <!-- face: determined brows, dot eyes, flat mouth -->
+    <path d="M436 152 l22 6 M504 152 l-22 6" stroke-width="5"/>
+    <circle cx="447" cy="170" r="5" fill="#111" stroke="none"/>
+    <circle cx="493" cy="170" r="5" fill="#111" stroke="none"/>
+    <path d="M452 208 Q470 202 488 208" stroke-width="4"/>
+  </g>
+</svg>
