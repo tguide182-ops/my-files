@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 560" width="400" height="560">
+  <rect width="400" height="560" fill="#efe6d2"/>
+  <ellipse cx="190" cy="522" rx="110" ry="12" fill="#00000022"/>
+
+  <!-- spear (behind hand) -->
+  <line x1="300" y1="40" x2="300" y2="530" stroke="#6b4423" stroke-width="8" stroke-linecap="round"/>
+  <polygon points="300,6 288,48 312,48" fill="#b8bcc4" stroke="#333" stroke-width="3" stroke-linejoin="round"/>
+
+  <g stroke="#222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- legs: thick -->
+    <line x1="165" y1="380" x2="150" y2="505" stroke-width="30" stroke="#222"/>
+    <line x1="215" y1="380" x2="230" y2="505" stroke-width="30" stroke="#222"/>
+    <line x1="165" y1="380" x2="150" y2="505" stroke-width="24" stroke="#5a3a1e"/>
+    <line x1="215" y1="380" x2="230" y2="505" stroke-width="24" stroke="#5a3a1e"/>
+    <!-- boots -->
+    <ellipse cx="143" cy="512" rx="24" ry="11" fill="#3b2412"/>
+    <ellipse cx="238" cy="512" rx="24" ry="11" fill="#3b2412"/>
+
+    <!-- arms: thick (outline then fill) -->
+    <line x1="140" y1="235" x2="110" y2="330" stroke-width="28" stroke="#222"/>
+    <line x1="140" y1="235" x2="110" y2="330" stroke-width="22" stroke="#a3322b"/>
+    <line x1="240" y1="235" x2="298" y2="300" stroke-width="28" stroke="#222"/>
+    <line x1="240" y1="235" x2="298" y2="300" stroke-width="22" stroke="#a3322b"/>
+    <!-- hands -->
+    <circle cx="108" cy="338" r="13" fill="#f2c9a0"/>
+    <circle cx="300" cy="302" r="13" fill="#f2c9a0"/>
+
+    <!-- thick torso / tunic -->
+    <path d="M135 225 Q190 200 245 225 L262 395 Q190 420 118 395 Z" fill="#c0392b"/>
+    <!-- tunic hem -->
+    <path d="M118 395 Q190 420 262 395 L266 412 Q190 440 114 412 Z" fill="#8f2a20"/>
+    <!-- belt -->
+    <rect x="124" y="320" width="132" height="16" fill="#3b2412"/>
+    <rect x="177" y="317" width="26" height="22" fill="#d4a017" stroke-width="2"/>
+    <!-- tunic collar cross-lacing -->
+    <line x1="190" y1="228" x2="190" y2="290" stroke="#f0d9a0" stroke-width="2"/>
+
+    <!-- neck -->
+    <line x1="190" y1="205" x2="190" y2="228" stroke-width="16" stroke="#222"/>
+    <line x1="190" y1="205" x2="190" y2="228" stroke-width="10" stroke="#f2c9a0"/>
+
+    <!-- head -->
+    <circle cx="190" cy="150" r="52" fill="#f6dcc0"/>
+    <!-- golden hair -->
+    <path d="M136 150 Q132 88 190 90 Q248 88 244 150 Q238 118 214 112 Q190 128 166 112 Q142 118 136 150 Z" fill="#e8b923"/>
+    <path d="M136 150 Q126 190 140 212 Q146 180 150 150 Z" fill="#e8b923"/>
+    <path d="M244 150 Q254 190 240 212 Q234 180 230 150 Z" fill="#e8b923"/>
+    <!-- face -->
+    <circle cx="172" cy="150" r="5" fill="#222" stroke="none"/>
+    <circle cx="208" cy="150" r="5" fill="#222" stroke="none"/>
+    <path d="M172 174 Q190 188 208 174" fill="none" stroke-width="3"/>
+  </g>
+</svg>
