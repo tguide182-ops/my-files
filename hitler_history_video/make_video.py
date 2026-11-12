@@ -5,12 +5,14 @@
 Generates a 60-second 1280x720 MP4 with:
   * cartoon 2D animation drawn frame-by-frame (Pillow)
   * a historical character + an animated narrator whose mouth syncs to the voice
-  * AI voice-over narration (edge-tts if available, else gTTS)
-  * synthesized sound effects + background score (numpy, no external assets)
+  * neural voice-over narration (Microsoft edge-tts, falls back to gTTS)
+  * real public-domain / CC0 sound effects + Chopin's Funeral March from
+    Wikimedia Commons (see assets/CREDITS.md); any clip that is missing is
+    downloaded automatically, or replaced by a synthesized sound
   * burned-in subtitles
 
 Requirements:
-    pip install pillow numpy gTTS        (edge-tts optional, nicer voice)
+    pip install pillow numpy edge-tts gTTS
     ffmpeg on PATH
 
 Run:
@@ -543,6 +545,8 @@ def scene_end(img, d, t, dur):
         od = ImageDraw.Draw(ov)
         ctext(od, (W / 2, 300), "REMEMBER.", F_TITLE, (240, 230, 210, int(255 * a)))
         ctext(od, (W / 2, 390), "So it never happens again.", F_SUB, (220, 190, 140, int(255 * a)))
+        ctext(od, (W / 2, 470), "Music: Chopin, Marche funebre (CC0)  |  Sound effects: Wikimedia Commons",
+              F_SMALL, (150, 140, 120, int(255 * a)))
         img.alpha_composite(ov)
 
 
@@ -558,12 +562,30 @@ def decode(path):
     return np.frombuffer(raw, dtype=np.float32).copy()
 
 
+VOICE = "en-GB-RyanNeural"   # try also: en-US-GuyNeural, en-GB-ThomasNeural
+
+
+def tts_edge(text, path):
+    import asyncio
+    import ssl
+    import edge_tts
+    import edge_tts.communicate as comm
+    # Respect a custom CA bundle (corporate proxies etc.); edge-tts pins certifi.
+    ca = os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE")
+    if ca and os.path.exists(ca):
+        comm._SSL_CTX = ssl.create_default_context(cafile=ca)
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    asyncio.run(edge_tts.Communicate(text, VOICE, rate="-4%", pitch="-4Hz",
+                                     proxy=proxy).save(path))
+    return os.path.getsize(path) > 1000
+
+
 def tts(text, path):
-    if shutil.which("edge-tts"):
-        r = subprocess.run(["edge-tts", "--voice", "en-GB-RyanNeural", "--rate", "-5%",
-                            "--text", text, "--write-media", path], capture_output=True)
-        if r.returncode == 0 and os.path.getsize(path) > 1000:
+    try:
+        if tts_edge(text, path):
             return True
+    except Exception as e:
+        print("  edge-tts unavailable (", type(e).__name__, ") - falling back to gTTS")
     try:
         from gtts import gTTS
         gTTS(text, lang="en", tld="co.uk").save(path)
@@ -744,6 +766,79 @@ def music(total):
     return lowpass(out * lfo, 3) * 0.6
 
 
+# ----------------------------------------------------------------------------
+# AUDIO: real recordings from Wikimedia Commons (public domain / CC0 / CC BY)
+# ----------------------------------------------------------------------------
+ASSET_DIR = os.path.join(HERE, "assets")
+ASSETS = {  # local name: Commons file name
+    "siren.ogg": "Civil-defense-siren-waver.ogg",
+    "explosion1.ogg": "Explosion-LS100155.ogg",
+    "explosion2.ogg": "Explosion 10.ogg",
+    "explosions.ogg": "Explosions-LS100150.ogg",
+    "drums.ogg": "Militarydrumbeat.ogg",
+    "applause.ogg": "Applause i.ogg",
+    "gunshots.ogg": "Gunshots 8.ogg",
+    "door.wav": "Slam closet door (Gravity Sound).wav",
+    "typewriter.wav": "406243 stubb typewriter-ding-near-mono.wav",
+    "chopin.ogg": "Frederic Chopin Piano Sonata No.2 in B flat minor Op35 - III Marche Funebre.ogg",
+}
+
+
+def fetch_assets():
+    import hashlib
+    import time
+    import urllib.parse
+    import urllib.request
+    os.makedirs(ASSET_DIR, exist_ok=True)
+    ua = {"User-Agent": "EduHistoryVideo/1.0 (educational video generator)"}
+    for local, name in ASSETS.items():
+        path = os.path.join(ASSET_DIR, local)
+        if os.path.exists(path) and os.path.getsize(path) > 1000:
+            continue
+        n = name.replace(" ", "_")
+        h = hashlib.md5(n.encode()).hexdigest()
+        url = f"https://upload.wikimedia.org/wikipedia/commons/{h[0]}/{h[:2]}/{urllib.parse.quote(n)}"
+        for attempt in range(3):
+            try:
+                data = urllib.request.urlopen(urllib.request.Request(url, headers=ua),
+                                              timeout=60).read()
+                open(path, "wb").write(data)
+                print(f"  downloaded {local}")
+                break
+            except Exception as e:
+                print(f"  {local}: {e} (retrying)")
+                time.sleep(10 * (attempt + 1))
+        time.sleep(2)
+
+
+def clip(local, start=0.0, dur=None, fade=0.05):
+    """Load part of an asset as mono float array, peak-normalised. None if missing."""
+    path = os.path.join(ASSET_DIR, local)
+    if not os.path.exists(path):
+        return None
+    args = ["ffmpeg", "-v", "error", "-ss", str(start)]
+    if dur:
+        args += ["-t", str(dur)]
+    args += ["-i", path, "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"]
+    try:
+        x = np.frombuffer(subprocess.run(args, capture_output=True, check=True).stdout,
+                          dtype=np.float32).astype(np.float64)
+    except subprocess.CalledProcessError:
+        return None
+    if len(x) == 0:
+        return None
+    f = min(len(x) // 2, int(fade * SR))
+    if f:
+        x[:f] *= np.linspace(0, 1, f)
+        x[-f:] *= np.linspace(1, 0, f)
+    return x / (np.abs(x).max() + 1e-9)
+
+
+def real_or(local, fallback, start=0.0, dur=None, fade=0.05):
+    x = clip(local, start, dur, fade)
+    return fallback() if x is None else x
+
+
 def build_sfx():
     tr = np.zeros(int(TOTAL * SR) + SR * 5)
 
@@ -753,34 +848,59 @@ def build_sfx():
         tr[s:e] += x[:e - s] * g
 
     S = STARTS
+    boom1 = lambda: real_or("explosion1.ogg", sfx_explosion)
+    boom2 = lambda: real_or("explosion2.ogg", sfx_explosion)
     put(0.0, sfx_whoosh(1.2), .5)
     put(0.2, sfx_bell(3), .25)
     put(S[1] + 0.1, sfx_whoosh(), .4)
+    put(S[1] + 1.2, real_or("typewriter.wav", sfx_typewriter), .25)
     put(S[1] + 2.6, sfx_stamp(), .9)
     put(S[1] + 4.5, sfx_whoosh(), .4)
-    for et in (0.4, 1.6, 3.0, 3.9):
-        put(S[1] + 4.6 + et, sfx_explosion(), .55)
-    for k in range(14):
-        put(S[1] + 4.8 + k * 0.33 + rng.uniform(0, .1), sfx_gunshot(), .25)
-    put(S[2], sfx_crowd(SCENES[2][0]), .18)
-    put(S[2] + 3.0, sfx_cheer(2.5), .22)
-    put(S[2] + 7.0, sfx_cheer(2.5), .22)
-    put(S[2], sfx_drums(SCENES[2][0]), .35)
+    for k, et in enumerate((0.4, 1.6, 3.0, 3.9)):
+        put(S[1] + 4.6 + et, boom1() if k % 2 else boom2(), .7)
+    gun = clip("gunshots.ogg", 0, 4.5, 0.2)
+    if gun is not None:
+        put(S[1] + 4.8, gun, .35)
+    else:
+        for k in range(14):
+            put(S[1] + 4.8 + k * 0.33 + rng.uniform(0, .1), sfx_gunshot(), .25)
+    put(S[2], sfx_crowd(SCENES[2][0]), .12)
+    put(S[2], real_or("drums.ogg", lambda: sfx_drums(SCENES[2][0]), 0, SCENES[2][0], 0.6), .3)
+    put(S[2] + 3.0, real_or("applause.ogg", lambda: sfx_cheer(2.5), 1.0, 3.0, 0.6), .3)
+    put(S[2] + 7.0, real_or("applause.ogg", lambda: sfx_cheer(2.5), 6.0, 3.0, 0.6), .3)
     for k in range(3):
         put(S[3] + k * 0.6, sfx_flip(), .9)
     put(S[3] + 1.8, sfx_typewriter(), .5)
     for k in range(3):
         put(S[3] + 2.4 + 1.0 + k, sfx_stamp(), .8)
-    put(S[4], sfx_siren(4.5), .5)
+    put(S[4], real_or("siren.ogg", lambda: sfx_siren(4.5), 2.0, 5.0, 1.0), .4)
     put(S[4], sfx_planes(SCENES[4][0]), .6)
-    for ts in (1.2, 2.4, 2.8, 3.3, 3.8, 5.0):
-        put(S[4] + ts, sfx_explosion(1.4), .35)
+    many = clip("explosions.ogg")
+    if many is not None:
+        put(S[4] + 1.1, many, .45)
+        put(S[4] + 5.0, boom1(), .45)
+    else:
+        for ts in (1.2, 2.4, 2.8, 3.3, 3.8, 5.0):
+            put(S[4] + ts, sfx_explosion(1.4), .35)
     put(S[5] + 0.2, sfx_bell(5), .2)
     put(S[6], sfx_whoosh(1.2), .3)
-    put(S[6] + 0.5, sfx_explosion(2.5), .25)
-    put(S[6] + 3.4, sfx_door(), .9)
+    put(S[6] + 0.5, boom2(), .3)
+    put(S[6] + 3.35, real_or("door.wav", sfx_door), .8)
     put(S[6] + 4.6, sfx_bell(4), .4)
     return tr[:int(TOTAL * SR)]
+
+
+def score(total):
+    """Chopin's Funeral March (CC0 recording); synthesized drone if unavailable."""
+    x = clip("chopin.ogg", 0.0, total, 2.0)
+    if x is None:
+        return music(total)
+    x = np.pad(x, (0, max(0, int(total * SR) - len(x))))[:int(total * SR)]
+    # quieter under the busy war scenes, fuller for the Holocaust + ending
+    t = np.arange(len(x)) / SR
+    g = np.interp(t, [0, STARTS[1], STARTS[5] - 1, STARTS[5], TOTAL],
+                  [0.55, 0.4, 0.4, 0.8, 0.8])
+    return x * g
 
 
 def write_wav(path, x, ch=1):
@@ -862,10 +982,12 @@ def main():
         sys.exit("ffmpeg is required (https://ffmpeg.org/download.html)")
     out = os.path.join(HERE, OUT) if len(sys.argv) < 2 else sys.argv[1]
     with tempfile.TemporaryDirectory() as tmp:
+        print("0/3 Fetching sound assets (Wikimedia Commons) ...")
+        fetch_assets()
         print("1/3 Generating narration ...")
         narr = build_narration(tmp)[:int(TOTAL * SR)]
         print("2/3 Synthesizing sound effects + music ...")
-        mix = narr * 1.0 + build_sfx() * 0.55 + music(TOTAL) * 0.5
+        mix = narr * 1.0 + build_sfx() * 0.55 + score(TOTAL) * 0.35
         # duck sfx/music under the voice a little, then normalise
         mix = mix / (np.abs(mix).max() + 1e-9) * 0.95
         stereo = np.repeat(mix[:, None], 2, axis=1).reshape(-1)
