@@ -545,7 +545,7 @@ def scene_end(img, d, t, dur):
         od = ImageDraw.Draw(ov)
         ctext(od, (W / 2, 300), "REMEMBER.", F_TITLE, (240, 230, 210, int(255 * a)))
         ctext(od, (W / 2, 390), "So it never happens again.", F_SUB, (220, 190, 140, int(255 * a)))
-        ctext(od, (W / 2, 470), "Music: Chopin, Marche funebre (CC0)  |  Sound effects: Wikimedia Commons",
+        ctext(od, (W / 2, 470), "Music: Chopin, Marche funebre (public domain)  |  Sound effects: Wikimedia Commons, archive.org",
               F_SMALL, (150, 140, 120, int(255 * a)))
         img.alpha_composite(ov)
 
@@ -771,7 +771,7 @@ def music(total):
 # ----------------------------------------------------------------------------
 ASSET_DIR = os.path.join(HERE, "assets")
 ASSETS = {  # local name: Commons file name
-    "siren.ogg": "Civil-defense-siren-waver.ogg",
+    "siren.ogg": "Civil-defense-siren-waver.ogg",  # shipped clip is from archive.org (CC0)
     "explosion1.ogg": "Explosion-LS100155.ogg",
     "explosion2.ogg": "Explosion 10.ogg",
     "explosions.ogg": "Explosions-LS100150.ogg",
@@ -819,7 +819,7 @@ def clip(local, start=0.0, dur=None, fade=0.05):
     args = ["ffmpeg", "-v", "error", "-ss", str(start)]
     if dur:
         args += ["-t", str(dur)]
-    args += ["-i", path, "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"]
+    args += ["-i", path, "-vn", "-f", "f32le", "-ac", "1", "-ar", str(SR), "-"]
     try:
         x = np.frombuffer(subprocess.run(args, capture_output=True, check=True).stdout,
                           dtype=np.float32).astype(np.float64)
@@ -890,9 +890,61 @@ def build_sfx():
     return tr[:int(TOTAL * SR)]
 
 
+def piano_note(midi, dur, vel=1.0):
+    f = 440.0 * 2 ** ((midi - 69) / 12)
+    n = int((dur + 1.5) * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    for k in range(1, 9):
+        fk = f * k * math.sqrt(1 + 0.0004 * k * k)  # slight string inharmonicity
+        if fk > SR / 2.2:
+            break
+        decay = 2.8 / (1 + 0.45 * k) * (220 / f) ** 0.3
+        out += np.sin(2 * np.pi * fk * t) / k ** 1.4 * np.exp(-t / decay)
+    rel = np.clip((dur + 0.25 - t) / 0.25, 0, 1)  # damper
+    return out * np.minimum(1, t / 0.004) * rel * vel
+
+
+def chopin_march(total, bpm=56):
+    """Chopin, Piano Sonata No. 2 'Marche funebre' (public-domain composition),
+    main theme synthesized as piano: B-flat minor ostinato + dotted-rhythm melody."""
+    q = 60 / bpm
+    n = int(total * SR) + SR * 3
+    out = np.zeros(n)
+
+    def add(start, midi, dur, vel):
+        s = int(start * SR)
+        if s >= n:
+            return
+        x = piano_note(midi, dur, vel)
+        e = min(n, s + len(x))
+        out[s:e] += x[:e - s]
+
+    chord_a = [34, 41, 46, 49, 53]   # Bb  F  Bb  Db  F
+    chord_b = [34, 41, 46, 49, 54]   # Bb  F  Bb  Db  Gb
+    # melody: (beat offset within 2 bars, midi, length in beats)
+    phrase = [(0, 70, 1), (1, 70, .75), (1.75, 70, .25), (2, 70, 2),
+              (4, 73, .75), (4.75, 72, .25), (5, 72, .75), (5.75, 70, .25),
+              (6, 70, .75), (6.75, 69, .25), (7, 70, 1)]
+    beats = int(total / q) + 1
+    for b in range(beats):
+        ch = chord_a if b % 2 == 0 else chord_b
+        for i, m in enumerate(ch):
+            add(b * q + i * 0.012, m, q * 0.95, 0.22 if i < 2 else 0.14)
+    for start in range(8, beats, 8):            # 2 bars of ostinato first
+        octave = 12 if (start // 8) % 3 == 2 else 0   # every third phrase an octave up
+        for off, m, ln in phrase:
+            add((start + off) * q, m + octave, ln * q, 0.5)
+            add((start + off) * q + 0.01, m + octave - 12, ln * q, 0.25)
+    out = lowpass(out[:int(total * SR)], 2)
+    return out / (np.abs(out).max() + 1e-9)
+
+
 def score(total):
-    """Chopin's Funeral March (CC0 recording); synthesized drone if unavailable."""
+    """Chopin's Funeral March: CC0 recording if present, else synthesized."""
     x = clip("chopin.ogg", 0.0, total, 2.0)
+    if x is None:
+        x = chopin_march(total)
     if x is None:
         return music(total)
     x = np.pad(x, (0, max(0, int(total * SR) - len(x))))[:int(total * SR)]
@@ -989,7 +1041,7 @@ def main():
         print("2/3 Synthesizing sound effects + music ...")
         mix = narr * 1.0 + build_sfx() * 0.55 + score(TOTAL) * 0.35
         # duck sfx/music under the voice a little, then normalise
-        mix = mix / (np.abs(mix).max() + 1e-9) * 0.95
+        mix = mix / (np.abs(mix).max() + 1e-9) * 0.8
         stereo = np.repeat(mix[:, None], 2, axis=1).reshape(-1)
         wav = os.path.join(tmp, "mix.wav")
         write_wav(wav, stereo, ch=2)
